@@ -66,6 +66,18 @@
         font-size: 13px;
       }
 
+      .note {
+        margin-top: 6px;
+        font-size: 12px;
+        color: rgba(230,237,243,0.72);
+        line-height: 1.3;
+      }
+
+      .note b {
+        color: #baffd8;
+        text-shadow: 0 0 8px rgba(34,197,94,0.65);
+      }
+
       .row {
         display: flex;
         justify-content: space-between;
@@ -162,6 +174,10 @@
       <div class="card">
         <div class="title">Claim your daily DUST</div>
         <div class="muted">Linea mainnet · 5 DUST per day · 6 months per wallet</div>
+        <div class="note">
+          Minimum requirement: wallet must hold at least <b id="minEthLabel">0.001 ETH</b> to claim.
+          <span class="muted">(Your balance: <span id="ethBal">—</span>)</span>
+        </div>
 
         <div class="spacer"></div>
 
@@ -221,6 +237,9 @@
       const LINEA_CHAIN_ID_HEX = "0xE708";
       const DUST_CONTRACT_ADDRESS = "0xYOUR_DEPLOYED_DUST_ADDRESS_HERE"; // <-- set this
 
+      // Min ETH balance requirement (must match contract: MIN_ETH_BALANCE = 0.001 ether)
+      const MIN_ETH_REQUIRED = "0.001"; // display + UI checks (contract enforces the real rule)
+
       // ABI matching your Solidity contract
       const DUST_ABI = [
         "function claimDaily() external",
@@ -273,6 +292,18 @@
         }
       }
 
+      function fmtEth(wei) {
+        try {
+          const eth = ethers.formatEther(wei);
+          const num = Number(eth);
+          if (!Number.isFinite(num)) return eth;
+          // concise display with up to 6 decimals
+          return num.toLocaleString(undefined, { maximumFractionDigits: 6 });
+        } catch {
+          return "—";
+        }
+      }
+
       // ====== countdown helpers ======
       function pad2(n) { return String(n).padStart(2, "0"); }
 
@@ -308,7 +339,7 @@
 
           $("nextClaim").textContent = formatCountdown(secondsLeft);
 
-          // At 0, refresh once to validate on-chain (paused/window/cap)
+          // At 0, refresh once to validate on-chain (paused/window/cap/min eth)
           if (secondsLeft <= 0) {
             try { await refresh(); } catch {}
           }
@@ -353,8 +384,20 @@
         }
       }
 
+      async function updateEthBalance() {
+        if (!provider || !user) return;
+        try {
+          const bal = await provider.getBalance(user);
+          $("ethBal").textContent = `${fmtEth(bal)} ETH`;
+        } catch {
+          $("ethBal").textContent = "—";
+        }
+      }
+
       async function connect() {
         clearAlerts();
+        $("minEthLabel").textContent = `${MIN_ETH_REQUIRED} ETH`;
+        $("ethBal").textContent = "—";
 
         if (!window.ethereum) {
           setErr("MetaMask not detected.");
@@ -381,12 +424,29 @@
 
         await refresh();
         startCountdown();
+
+        // Keep ETH balance fresh (helps users understand the requirement)
+        await updateEthBalance();
+        startEthPoll();
       }
+
+      function startEthPoll() {
+        if (ethPollInterval) clearInterval(ethPollInterval);
+        ethPollInterval = setInterval(async () => {
+          if (!user || !provider) return;
+          await updateEthBalance();
+        }, 12000); // every ~12s
+      }
+
+      let ethPollInterval = null;
 
       async function refresh() {
         if (!user || !contract) return;
 
         await ensureLinea();
+
+        // update ETH balance display
+        await updateEthBalance();
 
         // pull everything needed for UI
         const [okReason, nextClaimAt, windowEndsAt, firstAt, cap, total] = await Promise.all([
@@ -458,6 +518,7 @@
         window.ethereum.on("accountsChanged", async () => {
           try {
             stopCountdown();
+            if (ethPollInterval) clearInterval(ethPollInterval);
             await connect();
           } catch {}
         });
@@ -469,6 +530,9 @@
 
       $("connectBtn").addEventListener("click", connect);
       $("claimBtn").addEventListener("click", claim);
+
+      // Set label even before connect
+      $("minEthLabel").textContent = `${MIN_ETH_REQUIRED} ETH`;
     </script>
   </body>
 </html>
