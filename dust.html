@@ -1,0 +1,474 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>DustClaim - Linea</title>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, Arial;
+        background: #05080d;
+        color: #e6edf3;
+      }
+
+      .wrap {
+        max-width: 520px;
+        margin: 0 auto;
+        padding: 30px 18px;
+      }
+
+      /* ===== DUAL NEON FUTURISTIC APP FRAME ===== */
+      .card {
+        position: relative;
+        background: rgba(255,255,255,0.025);
+        border-radius: 20px;
+        padding: 20px;
+
+        /* OUTER BLUE NEON */
+        border: 2px solid #38bdf8;
+
+        box-shadow:
+          0 0 8px rgba(56,189,248,1),
+          0 0 24px rgba(56,189,248,0.95),
+          0 0 48px rgba(56,189,248,0.85),
+          0 0 90px rgba(56,189,248,0.7);
+      }
+
+      /* INNER GREEN NEON BORDER */
+      .card::before {
+        content: "";
+        position: absolute;
+        inset: 8px;
+        border-radius: 14px;
+        border: 1.5px solid #22c55e;
+        pointer-events: none;
+
+        box-shadow:
+          inset 0 0 10px rgba(34,197,94,0.8),
+          0 0 10px rgba(34,197,94,0.85),
+          0 0 22px rgba(34,197,94,0.75);
+      }
+
+      .title {
+        font-size: 22px;
+        font-weight: 900;
+        letter-spacing: 0.4px;
+        margin: 0 0 10px;
+        text-shadow:
+          0 0 14px rgba(56,189,248,0.9),
+          0 0 10px rgba(34,197,94,0.6);
+      }
+
+      .muted {
+        color: rgba(230,237,243,0.75);
+        font-size: 13px;
+      }
+
+      .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(34,197,94,0.25);
+      }
+
+      .row:last-child {
+        border-bottom: 0;
+      }
+
+      .btn {
+        width: 100%;
+        padding: 15px;
+        border-radius: 16px;
+        border: none;
+        font-weight: 900;
+        cursor: pointer;
+        letter-spacing: 0.3px;
+      }
+
+      .btn-secondary {
+        background: rgba(34,197,94,0.12);
+        color: #baffd8;
+        box-shadow:
+          inset 0 0 10px rgba(34,197,94,0.45),
+          0 0 16px rgba(34,197,94,0.55);
+      }
+
+      /* ===== NEON BLUE + GREEN PRIMARY BUTTON ===== */
+      .btn-primary {
+        background: linear-gradient(135deg, #22c55e, #38bdf8);
+        color: #02130b;
+
+        box-shadow:
+          0 0 12px rgba(34,197,94,1),
+          0 0 28px rgba(56,189,248,0.95),
+          0 0 60px rgba(56,189,248,0.85);
+      }
+
+      .btn-primary:disabled {
+        opacity: 0.45;
+        box-shadow: none;
+        cursor: not-allowed;
+      }
+
+      .spacer {
+        height: 14px;
+      }
+
+      /* ===== GREEN CORE STATUS PILL ===== */
+      .pill {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 800;
+
+        color: #baffd8;
+        background: rgba(34,197,94,0.2);
+        border: 1px solid #22c55e;
+
+        box-shadow:
+          inset 0 0 8px rgba(34,197,94,0.9),
+          0 0 10px rgba(34,197,94,0.85);
+      }
+
+      .err {
+        color: #ff6b6b;
+        font-size: 13px;
+        margin-top: 12px;
+        white-space: pre-wrap;
+      }
+
+      .ok {
+        color: #aaffd6;
+        font-size: 13px;
+        margin-top: 12px;
+        white-space: pre-wrap;
+        text-shadow:
+          0 0 10px rgba(34,197,94,0.8),
+          0 0 12px rgba(56,189,248,0.6);
+      }
+
+      code {
+        color: #bdeeff;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <div class="title">Claim your daily DUST</div>
+        <div class="muted">Linea mainnet · 5 DUST per day · 6 months per wallet</div>
+
+        <div class="spacer"></div>
+
+        <button id="connectBtn" class="btn btn-secondary">
+          Connect MetaMask
+        </button>
+
+        <div class="spacer"></div>
+
+        <div class="row">
+          <div class="muted">Wallet</div>
+          <div id="wallet" class="muted">Not connected</div>
+        </div>
+
+        <div class="row">
+          <div class="muted">Network</div>
+          <div id="network" class="muted">—</div>
+        </div>
+
+        <div class="row">
+          <div class="muted">Can claim now</div>
+          <div id="canClaim" class="pill">—</div>
+        </div>
+
+        <div class="row">
+          <div class="muted">Next claim</div>
+          <div id="nextClaim" class="muted">—</div>
+        </div>
+
+        <div class="row">
+          <div class="muted">Window ends</div>
+          <div id="windowEnds" class="muted">—</div>
+        </div>
+
+        <div class="row">
+          <div class="muted">Remaining supply</div>
+          <div id="remaining" class="muted">—</div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <button id="claimBtn" class="btn btn-primary" disabled>
+          Claim 5 DUST
+        </button>
+
+        <div id="msg" class="ok" style="display:none;"></div>
+        <div id="err" class="err" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- ethers v6 -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
+
+    <script>
+      // ====== CONFIG ======
+      const LINEA_CHAIN_ID_DEC = 59144;
+      const LINEA_CHAIN_ID_HEX = "0xE708";
+      const DUST_CONTRACT_ADDRESS = "0xYOUR_DEPLOYED_DUST_ADDRESS_HERE"; // <-- set this
+
+      // ABI matching your Solidity contract
+      const DUST_ABI = [
+        "function claimDaily() external",
+        "function canClaim(address user) view returns (bool ok, string reason)",
+        "function nextClaimTime(address user) view returns (uint256)",
+        "function windowEndTime(address user) view returns (uint256)",
+        "function firstClaimAt(address user) view returns (uint256)",
+        "function cap() view returns (uint256)",
+        "function totalSupply() view returns (uint256)",
+        "function decimals() view returns (uint8)"
+      ];
+
+      // ====== UI helpers ======
+      const $ = (id) => document.getElementById(id);
+
+      function setMsg(text) {
+        $("msg").style.display = "block";
+        $("err").style.display = "none";
+        $("msg").textContent = text;
+      }
+
+      function setErr(text) {
+        $("err").style.display = "block";
+        $("msg").style.display = "none";
+        $("err").textContent = text;
+      }
+
+      function clearAlerts() {
+        $("msg").style.display = "none";
+        $("err").style.display = "none";
+        $("msg").textContent = "";
+        $("err").textContent = "";
+      }
+
+      function fmtTime(ts) {
+        if (!ts || ts === 0) return "—";
+        const d = new Date(Number(ts) * 1000);
+        return d.toLocaleString();
+      }
+
+      function shortAddr(a) {
+        return a ? a.slice(0, 6) + "…" + a.slice(-4) : "—";
+      }
+
+      function fmtUnits(amount, decimals = 18) {
+        try {
+          return ethers.formatUnits(amount, decimals);
+        } catch {
+          return String(amount);
+        }
+      }
+
+      // ====== countdown helpers ======
+      function pad2(n) { return String(n).padStart(2, "0"); }
+
+      function formatCountdown(secondsLeft) {
+        if (secondsLeft <= 0) return "Ready now";
+        const h = Math.floor(secondsLeft / 3600);
+        const m = Math.floor((secondsLeft % 3600) / 60);
+        const s = Math.floor(secondsLeft % 60);
+        return `Claim in: ${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+      }
+
+      function stopCountdown() {
+        if (countdownInterval) {
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+        }
+      }
+
+      function startCountdown() {
+        stopCountdown();
+
+        countdownInterval = setInterval(async () => {
+          if (!user || !contract) return;
+
+          const nowSec = Math.floor(Date.now() / 1000);
+          const secondsLeft = Number(latestNextClaimAt) - nowSec;
+
+          if (latestCanClaimNow) {
+            $("nextClaim").textContent = "Ready now";
+            $("claimBtn").disabled = false;
+            return;
+          }
+
+          $("nextClaim").textContent = formatCountdown(secondsLeft);
+
+          // At 0, refresh once to validate on-chain (paused/window/cap)
+          if (secondsLeft <= 0) {
+            try { await refresh(); } catch {}
+          }
+        }, 1000);
+      }
+
+      // ====== state ======
+      let provider, signer, user, contract, decimals = 18;
+
+      let countdownInterval = null;
+      let latestNextClaimAt = 0;
+      let latestCanClaimNow = false;
+      let latestReason = "";
+
+      async function ensureLinea() {
+        const chainIdHex = await window.ethereum.request({ method: "eth_chainId" });
+        const chainId = parseInt(chainIdHex, 16);
+        $("network").textContent = `${chainId} ${chainId === LINEA_CHAIN_ID_DEC ? "(Linea)" : ""}`;
+
+        if (chainId !== LINEA_CHAIN_ID_DEC) {
+          try {
+            await window.ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: LINEA_CHAIN_ID_HEX }]
+            });
+          } catch (e) {
+            if (e && (e.code === 4902 || String(e.message || "").includes("Unrecognized chain"))) {
+              await window.ethereum.request({
+                method: "wallet_addEthereumChain",
+                params: [{
+                  chainId: LINEA_CHAIN_ID_HEX,
+                  chainName: "Linea",
+                  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+                  rpcUrls: ["https://rpc.linea.build"],
+                  blockExplorerUrls: ["https://lineascan.build"]
+                }]
+              });
+            } else {
+              throw e;
+            }
+          }
+        }
+      }
+
+      async function connect() {
+        clearAlerts();
+
+        if (!window.ethereum) {
+          setErr("MetaMask not detected.");
+          return;
+        }
+
+        if (!DUST_CONTRACT_ADDRESS || DUST_CONTRACT_ADDRESS.includes("0xYOUR_")) {
+          setErr("Set DUST_CONTRACT_ADDRESS in the script before using this page.");
+          return;
+        }
+
+        await ensureLinea();
+
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        user = accounts[0];
+        $("wallet").textContent = shortAddr(user);
+
+        provider = new ethers.BrowserProvider(window.ethereum);
+        signer = await provider.getSigner();
+
+        contract = new ethers.Contract(DUST_CONTRACT_ADDRESS, DUST_ABI, signer);
+
+        try { decimals = await contract.decimals(); } catch { decimals = 18; }
+
+        await refresh();
+        startCountdown();
+      }
+
+      async function refresh() {
+        if (!user || !contract) return;
+
+        await ensureLinea();
+
+        // pull everything needed for UI
+        const [okReason, nextClaimAt, windowEndsAt, firstAt, cap, total] = await Promise.all([
+          contract.canClaim(user),
+          contract.nextClaimTime(user),
+          contract.windowEndTime(user),
+          contract.firstClaimAt(user),
+          contract.cap(),
+          contract.totalSupply()
+        ]);
+
+        const canClaimNow = okReason[0];
+        const reason = okReason[1];
+
+        latestCanClaimNow = canClaimNow;
+        latestReason = reason;
+        latestNextClaimAt = Number(nextClaimAt);
+
+        const started = (firstAt && Number(firstAt) !== 0);
+        const remainingSupply = cap - total;
+
+        // UI
+        $("canClaim").textContent = canClaimNow ? "YES" : `NO (${reason})`;
+
+        // Next claim: show countdown (live updates will keep it fresh)
+        if (!started) {
+          $("nextClaim").textContent = "Now (first claim)";
+        } else if (canClaimNow) {
+          $("nextClaim").textContent = "Ready now";
+        } else {
+          const nowSec = Math.floor(Date.now() / 1000);
+          $("nextClaim").textContent = formatCountdown(Number(nextClaimAt) - nowSec);
+        }
+
+        $("windowEnds").textContent = started ? fmtTime(windowEndsAt) : "After first claim";
+        $("remaining").textContent = `${Number(fmtUnits(remainingSupply, decimals)).toLocaleString()} DUST`;
+
+        $("claimBtn").disabled = !canClaimNow;
+
+        // Ensure timer loop is running after refresh
+        startCountdown();
+      }
+
+      async function claim() {
+        clearAlerts();
+        try {
+          if (!user || !contract) throw new Error("Not connected.");
+          await ensureLinea();
+
+          $("claimBtn").disabled = true;
+          setMsg("Confirm the transaction in MetaMask...");
+
+          const tx = await contract.claimDaily();
+          setMsg(`Transaction sent: ${tx.hash}\nWaiting for confirmation...`);
+
+          const receipt = await tx.wait();
+          setMsg(`Confirmed in block ${receipt.blockNumber}.\nYou received 5 DUST.`);
+
+          await refresh();
+        } catch (e) {
+          const msg = e?.shortMessage || e?.reason || e?.message || String(e);
+          setErr(msg);
+          try { await refresh(); } catch {}
+        }
+      }
+
+      // Auto-refresh when wallet changes
+      if (window.ethereum) {
+        window.ethereum.on("accountsChanged", async () => {
+          try {
+            stopCountdown();
+            await connect();
+          } catch {}
+        });
+
+        window.ethereum.on("chainChanged", async () => {
+          try { await refresh(); } catch {}
+        });
+      }
+
+      $("connectBtn").addEventListener("click", connect);
+      $("claimBtn").addEventListener("click", claim);
+    </script>
+  </body>
+</html>
