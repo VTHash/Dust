@@ -114,7 +114,9 @@ Common reasons:
 
 ## Token Info
 
-- **Token name:** Dust  
+- **Token name:** Dust
+- **Token Contract Address
+- 0xF312Ec9f8087C87fbF3439B0369eA233a1EE4A7D
 - **Symbol:** DUST  
 - **Decimals:** 18  
 - **Claimed tokens are minted on-chain** at the moment you claim.
