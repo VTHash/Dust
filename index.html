@@ -23,7 +23,6 @@
         color: var(--text);
       }
 
-      /* Full-width mobile layout */
       .wrap{
         width:100%;
         max-width:none;
@@ -35,7 +34,6 @@
         .wrap{ padding: 28px 18px; max-width: 560px; margin: 0 auto; }
       }
 
-      /* ===== DUAL NEON FUTURISTIC APP FRAME ===== */
       .card{
         position: relative;
         width:100%;
@@ -245,19 +243,17 @@
       </div>
     </div>
 
-    <!-- ethers v6 -->
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
 
     <script>
       // ====== CONFIG ======
       const LINEA_CHAIN_ID_DEC = 59144;
       const LINEA_CHAIN_ID_HEX = "0xE708";
-      const DUST_CONTRACT_ADDRESS = "0xF312Ec9f8087C87fbF3439B0369eA233a1EE4A7D"; // <-- set this
 
-      // Min ETH requirement label only (contract enforces the real rule)
+      const DUST_CONTRACT_ADDRESS = "0xF312Ec9f8087C87fbF3439B0369eA233a1EE4A7D";
+
       const MIN_ETH_REQUIRED = "0.001";
 
-      // ABI matching your Solidity contract
       const DUST_ABI = [
         "function claimDaily() external",
         "function canClaim(address user) view returns (bool ok, string reason)",
@@ -317,7 +313,6 @@
         }
       }
 
-      // ====== countdown helpers ======
       function pad2(n) { return String(n).padStart(2, "0"); }
 
       function formatCountdown(secondsLeft) {
@@ -329,7 +324,12 @@
       }
 
       // ====== state ======
-      let provider, signer, user, contract, decimals = 18;
+      let provider = null;
+      let signer = null;
+      let user = null;
+      let contract = null;
+      let decimals = 18;
+
       let countdownInterval = null;
       let ethPollInterval = null;
 
@@ -341,33 +341,51 @@
         if (ethPollInterval) { clearInterval(ethPollInterval); ethPollInterval = null; }
       }
 
-      async function ensureLinea() {
+      // IMPORTANT: Only call this AFTER eth_requestAccounts succeeded.
+      async function ensureLineaConnected() {
         const chainIdHex = await window.ethereum.request({ method: "eth_chainId" });
         const chainId = parseInt(chainIdHex, 16);
-        $("network").textContent = `${chainId} ${chainId === LINEA_CHAIN_ID_DEC ? "(Linea)" : ""}`;
 
-        if (chainId !== LINEA_CHAIN_ID_DEC) {
-          try {
+        if (chainId === LINEA_CHAIN_ID_DEC) return;
+
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: LINEA_CHAIN_ID_HEX }]
+          });
+        } catch (e) {
+          const msg = String(e?.message || "");
+          if (e && (e.code === 4902 || msg.includes("Unrecognized chain"))) {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: LINEA_CHAIN_ID_HEX,
+                chainName: "Linea",
+                nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+                rpcUrls: ["https://rpc.linea.build"],
+                blockExplorerUrls: ["https://lineascan.build"]
+              }]
+            });
+
+            // Try switch again after adding
             await window.ethereum.request({
               method: "wallet_switchEthereumChain",
               params: [{ chainId: LINEA_CHAIN_ID_HEX }]
             });
-          } catch (e) {
-            if (e && (e.code === 4902 || String(e.message || "").includes("Unrecognized chain"))) {
-              await window.ethereum.request({
-                method: "wallet_addEthereumChain",
-                params: [{
-                  chainId: LINEA_CHAIN_ID_HEX,
-                  chainName: "Linea",
-                  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-                  rpcUrls: ["https://rpc.linea.build"],
-                  blockExplorerUrls: ["https://lineascan.build"]
-                }]
-              });
-            } else {
-              throw e;
-            }
+          } else {
+            throw e;
           }
+        }
+      }
+
+      async function updateNetworkLabel() {
+        try {
+          if (!provider) { $("network").textContent = "—"; return; }
+          const net = await provider.getNetwork();
+          const isLinea = Number(net.chainId) === LINEA_CHAIN_ID_DEC;
+          $("network").textContent = `${net.chainId}${isLinea ? " (Linea)" : ""}`;
+        } catch {
+          $("network").textContent = "—";
         }
       }
 
@@ -418,8 +436,8 @@
         $("minEthLabel").textContent = `${MIN_ETH_REQUIRED} ETH`;
         $("ethBal").textContent = "—";
 
-        if (!window.ethereum) {
-          setErr("MetaMask not detected.");
+        if (!window.ethereum || !window.ethereum.isMetaMask) {
+          setErr("MetaMask not detected. Open in MetaMask browser or install MetaMask extension.");
           return;
         }
 
@@ -428,30 +446,71 @@
           return;
         }
 
-        await ensureLinea();
+        try {
+          // 1) AUTHORIZATION FIRST (prevents 4100)
+          const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+          user = accounts?.[0] || null;
 
-        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-        user = accounts[0];
-        $("wallet").textContent = shortAddr(user);
+          if (!user) {
+            setErr("No account selected in MetaMask.");
+            return;
+          }
 
-        provider = new ethers.BrowserProvider(window.ethereum);
-        signer = await provider.getSigner();
-        contract = new ethers.Contract(DUST_CONTRACT_ADDRESS, DUST_ABI, signer);
+          $("wallet").textContent = shortAddr(user);
 
-        try { decimals = await contract.decimals(); } catch { decimals = 18; }
+          // 2) Then create provider/signer
+          provider = new ethers.BrowserProvider(window.ethereum);
+          signer = await provider.getSigner();
 
-        await refresh();
-        startCountdown();
+          // 3) Only AFTER authorization: switch/add Linea
+          await ensureLineaConnected();
 
-        await updateEthBalance();
-        startEthPoll();
+          // 4) Update labels after chain switch
+          await updateNetworkLabel();
+
+          // 5) Build contract + load decimals
+          contract = new ethers.Contract(DUST_CONTRACT_ADDRESS, DUST_ABI, signer);
+          try { decimals = await contract.decimals(); } catch { decimals = 18; }
+
+          await refresh();
+          startCountdown();
+
+          await updateEthBalance();
+          startEthPoll();
+
+          setMsg("Connected. Ready.");
+        } catch (e) {
+          const msg = e?.shortMessage || e?.reason || e?.message || String(e);
+
+          // User rejected connect
+          if (e && (e.code === 4001 || String(msg).toLowerCase().includes("user rejected"))) {
+            setErr("Connection request was rejected.");
+            return;
+          }
+
+          setErr(msg);
+        }
       }
 
       async function refresh() {
-        if (!user || !contract) return;
+        if (!user || !contract || !provider) return;
 
-        await ensureLinea();
+        await updateNetworkLabel();
         await updateEthBalance();
+
+        // If user is on the wrong chain, disable claim and show message.
+        try {
+          const net = await provider.getNetwork();
+          const isLinea = Number(net.chainId) === LINEA_CHAIN_ID_DEC;
+          if (!isLinea) {
+            $("canClaim").textContent = "NO (Wrong network)";
+            $("nextClaim").textContent = "Switch to Linea";
+            $("windowEnds").textContent = "—";
+            $("remaining").textContent = "—";
+            $("claimBtn").disabled = true;
+            return;
+          }
+        } catch {}
 
         const [okReason, nextClaimAt, windowEndsAt, firstAt, cap, total] = await Promise.all([
           contract.canClaim(user),
@@ -493,7 +552,10 @@
         clearAlerts();
         try {
           if (!user || !contract) throw new Error("Not connected.");
-          await ensureLinea();
+
+          // If user switched away from Linea, force them to switch back (authorized already)
+          await ensureLineaConnected();
+          await updateNetworkLabel();
 
           $("claimBtn").disabled = true;
           setMsg("Confirm the transaction in MetaMask...");
@@ -512,11 +574,20 @@
         }
       }
 
-      // Auto-refresh when wallet changes
+      // Wallet events
       if (window.ethereum) {
-        window.ethereum.on("accountsChanged", async () => {
-          try { await connect(); } catch {}
+        window.ethereum.on("accountsChanged", async (accounts) => {
+          // Do not auto-run eth_requestAccounts here; just update state and refresh.
+          user = accounts?.[0] || null;
+          $("wallet").textContent = user ? shortAddr(user) : "Not connected";
+          if (!user) {
+            stopIntervals();
+            $("claimBtn").disabled = true;
+            return;
+          }
+          try { await refresh(); } catch {}
         });
+
         window.ethereum.on("chainChanged", async () => {
           try { await refresh(); } catch {}
         });
@@ -524,7 +595,6 @@
 
       $("connectBtn").addEventListener("click", connect);
       $("claimBtn").addEventListener("click", claim);
-
       $("minEthLabel").textContent = `${MIN_ETH_REQUIRED} ETH`;
     </script>
   </body>
