@@ -6,181 +6,290 @@
     <title>DustClaim - Linea</title>
 
     <style>
-      :root{
-        --bg:#05080d;
-        --text:#e6edf3;
-        --muted:rgba(230,237,243,0.75);
-        --blue:#38bdf8;
-        --green:#22c55e;
-      }
+     :root{
+  --bg0:#05080d;
+  --bg1:#070d14;
+  --text:#e6edf3;
+  --muted:rgba(230,237,243,.72);
+  --muted2:rgba(230,237,243,.58);
 
-      * { box-sizing: border-box; }
+  --blue:#38bdf8;
+  --green:#22c55e;
 
-      body{
-        margin:0;
-        font-family: ui-sans-serif, system-ui, Arial;
-        background: var(--bg);
-        color: var(--text);
-      }
+  --card:rgba(255,255,255,.03);
+  --line:rgba(34,197,94,.22);
 
-      .wrap{
-        width:100%;
-        max-width:none;
-        margin:0;
-        padding: 14px 12px 18px;
-      }
+  --shadowBlue: 0 0 8px rgba(56,189,248,1),
+                0 0 24px rgba(56,189,248,.85),
+                0 0 54px rgba(56,189,248,.65);
 
-      @media (min-width: 520px){
-        .wrap{ padding: 28px 18px; max-width: 560px; margin: 0 auto; }
-      }
+  --shadowGreen: inset 0 0 10px rgba(34,197,94,.55),
+                 0 0 16px rgba(34,197,94,.45);
+}
 
-      .card{
-        position: relative;
-        width:100%;
-        background: rgba(255,255,255,0.025);
-        border-radius: 20px;
-        padding: 18px;
+*{ box-sizing:border-box; }
 
-        border: 2px solid var(--blue);
-        box-shadow:
-          0 0 10px rgba(56,189,248,1),
-          0 0 28px rgba(56,189,248,0.95),
-          0 0 55px rgba(56,189,248,0.85),
-          0 0 105px rgba(56,189,248,0.7);
-      }
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, Arial;
+  color: var(--text);
+  background: var(--bg0);
+}
 
-      .card::before{
-        content:"";
-        position:absolute;
-        inset: 8px;
-        border-radius: 14px;
-        border: 1.5px solid var(--green);
-        pointer-events:none;
-        box-shadow:
-          inset 0 0 12px rgba(34,197,94,0.85),
-          0 0 12px rgba(34,197,94,0.9),
-          0 0 26px rgba(34,197,94,0.75);
-      }
+/* =========================================================
+   WRAP — MATCH td-wrap
+   ========================================================= */
+.wrap{
+  width:100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 18px 14px 34px;
+  padding-bottom: calc(34px + env(safe-area-inset-bottom));
+  min-height: calc(100vh - 120px);
 
-      .title{
-        font-size: 22px;
-        font-weight: 900;
-        letter-spacing: 0.4px;
-        margin: 0 0 8px;
-        text-shadow:
-          0 0 14px rgba(56,189,248,0.9),
-          0 0 10px rgba(34,197,94,0.6);
-      }
+  background:
+    radial-gradient(1200px 900px at 50% 10%, rgba(99,102,241,.38), transparent 60%),
+    radial-gradient(1000px 800px at 50% 90%, rgba(168,85,247,.30), transparent 65%),
+    linear-gradient(
+      180deg,
+      rgba(124,58,237,.45),
+      rgba(139,92,246,.38),
+      rgba(99,102,241,.28)
+    );
 
-      .muted{ color: var(--muted); font-size: 13px; }
+  border-radius: 28px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.06),
+    0 0 60px rgba(139,92,246,.25),
+    inset 0 0 120px rgba(168,85,247,.18);
+}
 
-      .note{
-        margin-top: 8px;
-        font-size: 12px;
-        color: rgba(230,237,243,0.72);
-        line-height: 1.35;
-      }
+/* =========================================================
+   MAIN CARD — MATCH td-card
+   ========================================================= */
+.card{
+  position:relative;
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 24px;
 
-      .note b{
-        color: #baffd8;
-        text-shadow: 0 0 8px rgba(34,197,94,0.65);
-      }
+  background: rgba(10,14,30,.55);
+  border: 2px solid rgba(99,102,241,.65);
 
-      .tip{
-        margin-top: 10px;
-        padding: 10px 12px;
-        border-radius: 14px;
-        background: rgba(56,189,248,0.08);
-        border: 1px solid rgba(56,189,248,0.18);
-        box-shadow: inset 0 0 10px rgba(56,189,248,0.22);
-        color: rgba(230,237,243,0.85);
-      }
+  box-shadow:
+    0 0 28px rgba(99,102,241,.55),
+    inset 0 0 40px rgba(168,85,247,.35);
 
-      .row{
-        display:flex;
-        justify-content:space-between;
-        gap: 12px;
-        padding: 10px 0;
-        border-bottom: 1px solid rgba(34,197,94,0.25);
-      }
+  overflow:hidden;
+}
 
-      .row:last-child{ border-bottom:0; }
+.card::before{
+  content:"";
+  position:absolute;
+  inset: 8px;
+  border-radius: 18px;
 
-      .value{
-        text-align:right;
-        max-width: 62%;
-        overflow:hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
+  border: 1.5px solid rgba(168,85,247,.75);
 
-      .btn{
-        width:100%;
-        padding: 15px;
-        border-radius: 16px;
-        border:none;
-        font-weight: 900;
-        cursor:pointer;
-        letter-spacing: 0.3px;
-        touch-action: manipulation;
-      }
+  box-shadow:
+    inset 0 0 30px rgba(168,85,247,.45),
+    0 0 24px rgba(139,92,246,.55);
 
-      .btn-secondary{
-        background: rgba(34,197,94,0.12);
-        color: #baffd8;
-        box-shadow:
-          inset 0 0 10px rgba(34,197,94,0.45),
-          0 0 16px rgba(34,197,94,0.55);
-      }
+  pointer-events:none;
+}
 
-      .btn-primary{
-        background: linear-gradient(135deg, var(--green), var(--blue));
-        color: #02130b;
-        box-shadow:
-          0 0 12px rgba(34,197,94,1),
-          0 0 28px rgba(56,189,248,0.95),
-          0 0 60px rgba(56,189,248,0.85);
-      }
+/* =========================================================
+   TYPOGRAPHY — MATCH td-title / td-sub vibe
+   ========================================================= */
+.title{
+  margin:0 0 6px;
+  font-size: 18px;
+  font-weight: 950;
+  letter-spacing: .35px;
+  color: var(--text);
+  text-shadow:
+    0 0 14px rgba(56,189,248,.55),
+    0 0 12px rgba(34,197,94,.35);
+}
 
-      .btn-primary:disabled{
-        opacity: 0.45;
-        box-shadow: none;
-        cursor: not-allowed;
-      }
+.muted{
+  color: var(--muted);
+  font-size: 12.5px;
+  opacity: .78;
+}
 
-      .spacer{ height: 14px; }
+/* Your “note / tip” blocks => td-note styling */
+.note{
+  margin-top: 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
 
-      .pill{
-        display:inline-block;
-        padding: 6px 12px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 800;
-        color: #baffd8;
-        background: rgba(34,197,94,0.2);
-        border: 1px solid var(--green);
-        box-shadow:
-          inset 0 0 8px rgba(34,197,94,0.9),
-          0 0 10px rgba(34,197,94,0.85);
-        white-space: nowrap;
-      }
+.note b{
+  color: rgba(230,237,243,.95);
+  text-shadow: 0 0 10px rgba(34,197,94,.22);
+}
 
-      .err{
-        color:#ff6b6b;
-        font-size: 13px;
-        margin-top: 12px;
-        white-space: pre-wrap;
-      }
+.tip{
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(18,22,46,.65);
+  border: 1px solid rgba(99,102,241,.45);
+  box-shadow: 0 0 18px rgba(99,102,241,.25);
+  color: rgba(230,237,243,.88);
+}
 
-      .ok{
-        color:#aaffd6;
-        font-size: 13px;
-        margin-top: 12px;
-        white-space: pre-wrap;
-        text-shadow:
-          0 0 10px rgba(34,197,94,0.8),
-          0 0 12px rgba(56,189,248,0.6);
-      }
+.tip b{
+  color: rgba(230,237,243,.95);
+}
+
+/* =========================================================
+   ROWS => METRIC TILES LOOK
+   ========================================================= */
+.row{
+  position:relative;
+  display:flex;
+  justify-content:space-between;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+
+  background: rgba(18,22,46,.65);
+  border: 1px solid rgba(168,85,247,.35);
+
+  box-shadow:
+    inset 0 0 22px rgba(168,85,247,.28),
+    0 0 18px rgba(99,102,241,.22);
+
+  margin-top: 12px;
+}
+
+/* Remove the old “border-bottom” feel */
+.row:last-child{ border-bottom: 1px solid rgba(168,85,247,.35); }
+
+.value{
+  text-align:right;
+  max-width: 62%;
+  overflow:hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(230,237,243,.95);
+  font-weight: 900;
+}
+
+/* =========================================================
+   BUTTONS — KEEP YOUR CLASSES, MATCH td style
+   ========================================================= */
+.btn{
+  width:100%;
+  padding: 15px;
+  border-radius: 16px;
+  border:none;
+  font-weight: 950;
+  cursor:pointer;
+  letter-spacing: .3px;
+  touch-action: manipulation;
+}
+
+.btn-secondary{
+  background: rgba(18,22,46,.65);
+  border: 1px solid rgba(99,102,241,.45);
+  color: rgba(230,237,243,.92);
+  box-shadow: 0 0 18px rgba(99,102,241,.25);
+}
+
+.btn-secondary:hover{
+  filter: brightness(1.05);
+}
+
+.btn-primary{
+  background: linear-gradient(135deg, rgba(124,58,237,.9), rgba(56,189,248,.95));
+  color: #061020;
+  box-shadow:
+    0 0 18px rgba(99,102,241,.40),
+    0 0 26px rgba(56,189,248,.35),
+    inset 0 0 18px rgba(168,85,247,.25);
+}
+
+.btn-primary:hover{
+  filter: brightness(1.05);
+}
+
+.btn-primary:disabled{
+  opacity: .45;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.spacer{ height: 14px; }
+
+/* =========================================================
+   PILL — MATCH TD HUD
+   ========================================================= */
+.pill{
+  display:inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 950;
+  color: rgba(230,237,243,.92);
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(99,102,241,.45);
+  box-shadow: 0 0 18px rgba(99,102,241,.18);
+  white-space: nowrap;
+}
+
+/* =========================================================
+   STATUS BOXES
+   ========================================================= */
+.err,
+.ok{
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(18,22,46,.65);
+  white-space: pre-wrap;
+}
+
+.ok{
+  border: 1px solid rgba(99,102,241,.45);
+  box-shadow: 0 0 18px rgba(99,102,241,.25);
+  color: rgba(230,237,243,.88);
+}
+
+.err{
+  border: 1px solid rgba(255,107,107,.65);
+  box-shadow: 0 0 18px rgba(255,107,107,.25);
+  color: rgba(255,220,220,.92);
+}
+
+/* Code tag styling consistent with td */
+code{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: rgba(230,237,243,.92);
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(99,102,241,.45);
+  border-radius: 10px;
+  padding: 2px 8px;
+}
+
+/* =========================================================
+   RESPONSIVE — MATCH td responsive breakpoints
+   ========================================================= */
+@media (min-width: 740px){
+  .wrap{ padding: 22px 16px 44px; }
+  .title{ font-size: 22px; }
+  .card{ padding: 20px; }
+}
+
+@media (max-width: 420px){
+  .title{ font-size: 17px; }
+  .value{ font-size: 13.5px; }
+  .card{ border-radius: 20px; }
+}
 
       code{ color:#bdeeff; }
     </style>
