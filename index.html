@@ -47,12 +47,7 @@
         background:
           radial-gradient(1200px 900px at 50% 10%, rgba(99,102,241,.38), transparent 60%),
           radial-gradient(1000px 800px at 50% 90%, rgba(168,85,247,.30), transparent 65%),
-          linear-gradient(
-            180deg,
-            rgba(124,58,237,.45),
-            rgba(139,92,246,.38),
-            rgba(99,102,241,.28)
-          );
+          linear-gradient(180deg, rgba(124,58,237,.45), rgba(139,92,246,.38), rgba(99,102,241,.28));
 
         border-radius: 28px;
         box-shadow:
@@ -196,6 +191,16 @@
         cursor: not-allowed;
       }
 
+      .btn-row{
+        display:grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      @media (min-width: 520px){
+        .btn-row{ grid-template-columns: 1fr 1fr; }
+      }
+
       .spacer{ height: 14px; }
 
       .pill{
@@ -211,8 +216,7 @@
         white-space: nowrap;
       }
 
-      .err,
-      .ok{
+      .err, .ok{
         margin-top: 14px;
         padding: 12px;
         border-radius: 16px;
@@ -265,13 +269,15 @@
         <div class="note">
           Minimum requirement: wallet must hold at least <b id="minEthLabel">0.001 ETH</b> to claim.
           <span class="muted">(Your balance: <span id="ethBal">—</span>)</span>
-          <div class="tip"><b>Tip:</b> Any browser works via AppKit. MetaMask browser/extension also works.</div>
+          <div class="tip"><b>Tip:</b> Any browser works via WalletConnect. MetaMask browser/extension works too.</div>
         </div>
 
         <div class="spacer"></div>
 
-        <!-- AppKit connect button (opens the AppKit modal UI) -->
-        <button id="connectBtn" class="btn btn-secondary">Connect Wallet</button>
+        <div class="btn-row">
+          <button id="connectBtn" class="btn btn-secondary">Connect wallet</button>
+          <button id="switchLineaBtn" class="btn btn-secondary" disabled>Switch to Linea</button>
+        </div>
 
         <div class="spacer"></div>
 
@@ -315,33 +321,32 @@
     </div>
 
     <script type="module">
-      // =========================================================
-      // AppKit + ethers (all browser-side; IPFS/ENS friendly)
-      // =========================================================
+      // ========= IMPORTANT =========
+      // WalletConnect/Reown needs a PROJECT ID here (public).
+      // Paste your project id below.
+      const WALLETCONNECT_PROJECT_ID = "5cf928ad183dd374ecc95d45aab1e525";
+      // =============================
+
+      import { ethers } from "https://esm.sh/ethers@6.15.0";
       import { createAppKit } from "https://esm.sh/@reown/appkit@latest";
       import { EthersAdapter } from "https://esm.sh/@reown/appkit-adapter-ethers@latest";
-      import { ethers } from "https://esm.sh/ethers@6.15.0";
+      import { defineChain } from "https://esm.sh/@reown/appkit/networks@latest";
 
-      // =========================
-      // CONFIG (EDIT THESE)
-      // =========================
-      const WALLETCONNECT_PROJECT_ID = "5cf928ad183dd374ecc95d45aab1e525"; // <-- REQUIRED (public)
+      // ====== CONFIG ======
+      const LINEA_CHAIN_ID_DEC = 59144;
+      const LINEA_CHAIN_ID_HEX = "0xE708";
       const DUST_CONTRACT_ADDRESS = "0xF312Ec9f8087C87fbF3439B0369eA233a1EE4A7D";
       const MIN_ETH_REQUIRED = "0.001";
 
-      // Linea network object (works even if you don't import @reown/appkit/networks)
-      const LINEA = {
-        chainId: 59144,
+      // Linea chain definition (safe even if not shipped in networks list)
+      const linea = defineChain({
+        id: LINEA_CHAIN_ID_DEC,
         name: "Linea",
-        currency: "ETH",
-        explorerUrl: "https://lineascan.build",
-        rpcUrl: "https://rpc.linea.build"
-      };
+        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+        rpcUrls: { default: { http: ["https://rpc.linea.build"] } },
+        blockExplorers: { default: { name: "LineaScan", url: "https://lineascan.build" } }
+      });
 
-      // Optional: icon for wallets list
-      const ICONS_URL = "https://dustclaim.xyz/favicon.ico";
-
-      // ABI (your contract)
       const DUST_ABI = [
         "function claimDaily() external",
         "function canClaim(address user) view returns (bool ok, string reason)",
@@ -353,9 +358,7 @@
         "function decimals() view returns (uint8)"
       ];
 
-      // =========================
-      // UI helpers
-      // =========================
+      // ====== UI helpers ======
       const $ = (id) => document.getElementById(id);
 
       function setMsg(text) {
@@ -377,14 +380,14 @@
         $("err").textContent = "";
       }
 
-      function shortAddr(a) {
-        return a ? a.slice(0, 6) + "…" + a.slice(-4) : "—";
-      }
-
       function fmtTime(ts) {
         if (!ts || ts === 0) return "—";
         const d = new Date(Number(ts) * 1000);
         return d.toLocaleString();
+      }
+
+      function shortAddr(a) {
+        return a ? a.slice(0, 6) + "…" + a.slice(-4) : "—";
       }
 
       function fmtUnits(amount, decimals = 18) {
@@ -404,6 +407,7 @@
       }
 
       function pad2(n) { return String(n).padStart(2, "0"); }
+
       function formatCountdown(secondsLeft) {
         if (secondsLeft <= 0) return "Ready now";
         const h = Math.floor(secondsLeft / 3600);
@@ -412,38 +416,34 @@
         return `Claim in: ${pad2(h)}:${pad2(m)}:${pad2(s)}`;
       }
 
-      // =========================
-      // AppKit init
-      // =========================
-      if (!WALLETCONNECT_PROJECT_ID || WALLETCONNECT_PROJECT_ID.includes("YOUR_")) {
-        setErr("Missing WALLETCONNECT_PROJECT_ID. Add your Reown/WalletConnect Project ID in the script.");
+      // ====== AppKit init ======
+      $("minEthLabel").textContent = `${MIN_ETH_REQUIRED} ETH`;
+
+      if (!WALLETCONNECT_PROJECT_ID || WALLETCONNECT_PROJECT_ID.includes("PASTE_")) {
+        setErr("Set WALLETCONNECT_PROJECT_ID in the code, then re-upload to IPFS.");
       }
 
-      const metadata = {
-        name: "DustClaim",
-        description: "Claim your daily DUST on Linea",
-        url: "https://dustclaim.eth.limo",
-        icons: [ICONS_URL]
-      };
-
-      const modal = createAppKit({
-        projectId: WALLETCONNECT_PROJECT_ID,
+      const appKit = createAppKit({
         adapters: [new EthersAdapter()],
-        networks: [LINEA],
-        metadata,
+        networks: [linea],
+        projectId: WALLETCONNECT_PROJECT_ID,
+        metadata: {
+          name: "DustClaim",
+          description: "Claim your daily DUST on Linea",
+          url: "https://dustclaim.eth.limo",
+          icons: ["https://dustclaim.xyz/favicon.ico"]
+        },
         features: {
-          analytics: true,
-          legalCheckbox: false
+          analytics: false
         }
       });
 
-      // =========================
-      // State
-      // =========================
+      // ====== State ======
+      let walletProvider = null; // EIP-1193 provider from AppKit
       let provider = null; // ethers BrowserProvider
-      let signer = null; // ethers Signer
-      let user = null; // address
-      let contract = null; // ethers Contract
+      let signer = null;
+      let user = null;
+      let contract = null;
       let decimals = 18;
 
       let countdownInterval = null;
@@ -457,14 +457,50 @@
         if (ethPollInterval) { clearInterval(ethPollInterval); ethPollInterval = null; }
       }
 
+      async function ensureLineaConnected(eip1193) {
+        const chainIdHex = await eip1193.request({ method: "eth_chainId" });
+        const chainId = parseInt(chainIdHex, 16);
+        if (chainId === LINEA_CHAIN_ID_DEC) return;
+
+        try {
+          await eip1193.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: LINEA_CHAIN_ID_HEX }]
+          });
+        } catch (e) {
+          const msg = String(e?.message || "");
+          if (e && (e.code === 4902 || msg.includes("Unrecognized chain"))) {
+            await eip1193.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: LINEA_CHAIN_ID_HEX,
+                chainName: "Linea",
+                nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+                rpcUrls: ["https://rpc.linea.build"],
+                blockExplorerUrls: ["https://lineascan.build"]
+              }]
+            });
+
+            await eip1193.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: LINEA_CHAIN_ID_HEX }]
+            });
+          } else {
+            throw e;
+          }
+        }
+      }
+
       async function updateNetworkLabel() {
         try {
           if (!provider) { $("network").textContent = "—"; return; }
           const net = await provider.getNetwork();
-          const isLinea = Number(net.chainId) === LINEA.chainId;
+          const isLinea = Number(net.chainId) === LINEA_CHAIN_ID_DEC;
           $("network").textContent = `${net.chainId}${isLinea ? " (Linea)" : ""}`;
+          $("switchLineaBtn").disabled = isLinea ? true : false;
         } catch {
           $("network").textContent = "—";
+          $("switchLineaBtn").disabled = true;
         }
       }
 
@@ -480,10 +516,7 @@
 
       function startEthPoll() {
         if (ethPollInterval) clearInterval(ethPollInterval);
-        ethPollInterval = setInterval(async () => {
-          if (!user || !provider) return;
-          await updateEthBalance();
-        }, 12000);
+        ethPollInterval = setInterval(updateEthBalance, 12000);
       }
 
       function startCountdown() {
@@ -508,78 +541,102 @@
         }, 1000);
       }
 
-      // Force Linea on connected wallet provider (AppKit exposes modal.walletProvider)
-      async function ensureLineaConnected(eip1193) {
-        const wantedHex = "0xE708"; // 59144
-        const chainIdHex = await eip1193.request({ method: "eth_chainId" });
-        const chainId = parseInt(chainIdHex, 16);
-        if (chainId === LINEA.chainId) return;
-
-        try {
-          await eip1193.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: wantedHex }]
-          });
-        } catch (e) {
-          const msg = String(e?.message || "");
-          if (e && (e.code === 4902 || msg.includes("Unrecognized chain"))) {
-            await eip1193.request({
-              method: "wallet_addEthereumChain",
-              params: [{
-                chainId: wantedHex,
-                chainName: "Linea",
-                nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
-                rpcUrls: [LINEA.rpcUrl],
-                blockExplorerUrls: [LINEA.explorerUrl]
-              }]
-            });
-
-            await eip1193.request({
-              method: "wallet_switchEthereumChain",
-              params: [{ chainId: wantedHex }]
-            });
-          } else {
-            throw e;
-          }
-        }
+      async function buildContract() {
+        contract = new ethers.Contract(DUST_CONTRACT_ADDRESS, DUST_ABI, signer);
+        try { decimals = await contract.decimals(); } catch { decimals = 18; }
       }
 
-      async function bindFromAppKitWalletProvider() {
-        // AppKit keeps the currently connected EIP-1193 provider here:
-        const wp = modal.walletProvider;
+      async function connectWithAppKit() {
+        clearAlerts();
+        stopIntervals();
 
-        if (!wp) {
+        if (!WALLETCONNECT_PROJECT_ID || WALLETCONNECT_PROJECT_ID.includes("PASTE_")) {
+          setErr("Missing WALLETCONNECT_PROJECT_ID. Add it, re-upload to IPFS, then try again.");
+          return;
+        }
+
+        // Open AppKit modal
+        await appKit.open({ view: "Connect" });
+
+        // After connect, AppKit will emit providers/accounts; we also try to pull immediately:
+        try {
+          // Provider access is event-driven; this may still be null right after modal closes in some wallets.
+          // So we rely on subscribeProviders below as the source of truth.
+          setMsg("Connecting...");
+        } catch {}
+      }
+
+      async function syncFromProvider(p) {
+        walletProvider = p;
+
+        if (!walletProvider) {
+          user = null;
           provider = null;
           signer = null;
-          user = null;
           contract = null;
           $("wallet").textContent = "Not connected";
           $("network").textContent = "—";
           $("ethBal").textContent = "—";
+          $("canClaim").textContent = "—";
+          $("nextClaim").textContent = "—";
+          $("windowEnds").textContent = "—";
+          $("remaining").textContent = "—";
           $("claimBtn").disabled = true;
+          $("switchLineaBtn").disabled = true;
           stopIntervals();
           return;
         }
 
-        // Ensure Linea after connection
-        await ensureLineaConnected(wp);
-
-        provider = new ethers.BrowserProvider(wp);
+        provider = new ethers.BrowserProvider(walletProvider);
         signer = await provider.getSigner();
         user = await signer.getAddress();
 
         $("wallet").textContent = shortAddr(user);
 
-        contract = new ethers.Contract(DUST_CONTRACT_ADDRESS, DUST_ABI, signer);
-        try { decimals = await contract.decimals(); } catch { decimals = 18; }
+        // Ensure Linea after connection (some wallets connect on a different chain)
+        await ensureLineaConnected(walletProvider);
 
         await updateNetworkLabel();
-        await updateEthBalance();
+        await buildContract();
 
         await refresh();
         startCountdown();
+
+        await updateEthBalance();
         startEthPoll();
+
+        setMsg("Connected. Ready.");
       }
+
+      // Subscribe to provider changes from AppKit (this is what makes it reliable across wallets/browsers)
+      appKit.subscribeProviders(async (state) => {
+        // state.walletProvider is the EIP-1193 provider we need
+        // (AppKit provides it when connected)
+        try {
+          if (state?.walletProvider) {
+            await syncFromProvider(state.walletProvider);
+          } else {
+            await syncFromProvider(null);
+          }
+        } catch (e) {
+          setErr(e?.message || String(e));
+        }
+      });
+
+      // Also reflect account/network changes nicely
+      appKit.subscribeAccount((acct) => {
+        // acct.isConnected, acct.address
+        if (!acct?.isConnected) {
+          // provider subscription will clean up; keep UI consistent
+          $("wallet").textContent = "Not connected";
+          $("claimBtn").disabled = true;
+        }
+      });
+
+      appKit.subscribeNetwork(() => {
+        // provider subscription + refresh handles it, but this keeps UI snappy
+        refresh().catch(() => {});
+      });
 
       async function refresh() {
         if (!user || !contract || !provider) return;
@@ -587,16 +644,17 @@
         await updateNetworkLabel();
         await updateEthBalance();
 
-        // If wrong chain, show message & disable claim
+        // If wrong chain, show a clear message
         try {
           const net = await provider.getNetwork();
-          const isLinea = Number(net.chainId) === LINEA.chainId;
+          const isLinea = Number(net.chainId) === LINEA_CHAIN_ID_DEC;
           if (!isLinea) {
             $("canClaim").textContent = "NO (Wrong network)";
             $("nextClaim").textContent = "Switch to Linea";
             $("windowEnds").textContent = "—";
             $("remaining").textContent = "—";
             $("claimBtn").disabled = true;
+            $("switchLineaBtn").disabled = false;
             return;
           }
         } catch {}
@@ -634,14 +692,30 @@
         $("remaining").textContent = `${Number(fmtUnits(remainingSupply, decimals)).toLocaleString()} DUST`;
 
         $("claimBtn").disabled = !canClaimNow;
+        $("switchLineaBtn").disabled = false;
+
         startCountdown();
+      }
+
+      async function switchToLinea() {
+        clearAlerts();
+        try {
+          if (!walletProvider) throw new Error("Connect a wallet first.");
+          await ensureLineaConnected(walletProvider);
+          await refresh();
+          setMsg("Switched to Linea.");
+        } catch (e) {
+          setErr(e?.message || String(e));
+        }
       }
 
       async function claim() {
         clearAlerts();
         try {
-          if (!modal.walletProvider) throw new Error("Not connected.");
-          await ensureLineaConnected(modal.walletProvider);
+          if (!user || !contract || !walletProvider) throw new Error("Not connected.");
+
+          await ensureLineaConnected(walletProvider);
+          await updateNetworkLabel();
 
           $("claimBtn").disabled = true;
           setMsg("Confirm the transaction in your wallet...");
@@ -660,47 +734,12 @@
         }
       }
 
-      // =========================
-      // UI wiring
-      // =========================
-      $("minEthLabel").textContent = `${MIN_ETH_REQUIRED} ETH`;
-
-      $("connectBtn").addEventListener("click", async () => {
-        clearAlerts();
-        try {
-          await modal.open(); // opens AppKit UI
-          // small delay to let walletProvider populate in some wallets
-          setTimeout(async () => {
-            try {
-              await bindFromAppKitWalletProvider();
-              setMsg("Connected.");
-            } catch (e) {
-              const msg = e?.shortMessage || e?.reason || e?.message || String(e);
-              setErr(msg);
-            }
-          }, 600);
-        } catch (e) {
-          const msg = e?.shortMessage || e?.reason || e?.message || String(e);
-          setErr(msg);
-        }
-      });
-
+      $("connectBtn").addEventListener("click", connectWithAppKit);
+      $("switchLineaBtn").addEventListener("click", switchToLinea);
       $("claimBtn").addEventListener("click", claim);
 
-      // If user reloads while already connected, restore state:
-      // (AppKit may already have a walletProvider available)
-      if (modal.walletProvider) {
-        bindFromAppKitWalletProvider().catch(() => {});
-      }
-
-      // Optional: if AppKit emits events in your version, this keeps UI in sync.
-      // (Safe no-op if not available.)
-      try {
-        modal.subscribe?.(async (state) => {
-          // when connection state changes, re-bind
-          await bindFromAppKitWalletProvider();
-        });
-      } catch {}
+      // Optional: if user lands already connected (some wallets persist session)
+      // the subscribeProviders handler will pick it up automatically.
     </script>
   </body>
 </html>
